@@ -1,86 +1,89 @@
-import React, { PureComponent } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import css from './App.module.css'
-import { Searchbar } from './Searchbar/Searchbar'
-import { ImageGallery } from './ImageGallery/ImageGallery'
-import { Button } from './Button/Button'
-import { fetchImages } from './Api/Api';
-import { Loader} from '../components/Loader/Loader'
+import React, { useState, useEffect } from 'react';
+import toast, { Toaster } from 'react-hot-toast';
+import { SearchBar } from './Searchbar/Searchbar';
+import { serviceSearch } from 'api';
+import { ImageGallery } from './ImageGallery/ImageGallery';
+import { Loader } from './Loader/Loader';
+import { Button } from './Button/Button';
+import { Error, Info } from './Message';
+import { Layout } from './Layout';
 
-class App extends PureComponent {
-  state = {
-    query: '',
-    page: 1,
-    images: [],
-    loading: false,
-    error: false,
-    loadMore: false,
-  }
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [showLoadMode, setShowLoadMode] = useState(false);
 
-  async componentDidUpdate(prevProps, prevState) {
-  
-    
-    if (this.state.page !== prevState.page || this.state.query !== prevState.query) {
-      try {
-        this.setState({ loading: true, error: false })
-        const { query, page } = this.state;
-        const fetchedImages = await fetchImages(query, page);
+  const handlerSubmit = inputValue => {
+    setQuery(inputValue);
+    setPage(1);
+    setGalleryItems([]);
+    setShowLoadMode(false);
+  };
 
-        
-        if (query.trim() === '') {
-      toast.error('Please enter valid request');
+  const handlerLoadMore = () => {
+    setPage(prevstate => prevstate + 1);
+  };
+
+  useEffect(() => {
+    if (query === '') {
       return;
     }
+    async function search() {
+      try {
+        setLoading(true);
+        setError(false);
+        setIsEmpty(false);
 
-        if (fetchedImages.hits.length === 0) {
-          toast.info('There are no pictures matching your request')
+        const data = await serviceSearch(page, query);
+
+        if (page === 1 && data.totalHits > 1) {
+          toast.success(`Hooray! We found ${data.totalHits} images!`);
         }
 
-        this.setState(prevState => ({
-          images: [...prevState.images, ...fetchedImages.hits],
-          loadMore: page < Math.ceil(fetchedImages.totalHits / 12),
- 
-        }))
-              }
-          catch (error) {
-        this.setState({ error: true })
+        if (page >= Math.ceil(data.totalHits / 12) && data.totalHits !== 0) {
+          toast("We're sorry, but you've reached the end of search results.");
+        }
+
+        setIsEmpty(() => {
+          if (data.hits.length === 0) {
+            return true;
+          }
+        });
+
+        setGalleryItems(prevState => [...prevState, ...data.hits]);
+        setShowLoadMode(page < Math.ceil(data.totalHits / 12));
+      } catch (error) {
+        setError(true);
       } finally {
-        this.setState({ loading: false });
+        setLoading(false);
       }
     }
-  }
-  
-  onFormSubmit = (value) => {
-    const { query } = this.state;
-      
-    if (query === value) {
-      return;
-    }
-      this.setState({ query: value, images: [],
-        page: 1, error: false, loadMore: false });
-  }
+    search();
+  }, [page, query]);
 
-  onLoadMore = () => {
-    this.setState(prevState => ({
-         page: prevState.page + 1  
-        }));
-  }
- 
-  
-render() {
-    const { images, loading, error, loadMore} = this.state;
-  return(
-    <div className={css.App}>
-      <Searchbar onSubmit={this.onFormSubmit} />
-      {error && toast.error(`Whoops, something went wrong. Try reloading the page`)}
-      {loading && <Loader/>}
-      {images.length > 0 && <ImageGallery images={images} />}
-      {loadMore && <Button onLoadMore={this.onLoadMore} />}
-      <ToastContainer autoClose={4000} theme="colored" />
-    </div>
-  )
-  };
-}
-
-export default App;
+  return (
+    <Layout>
+      <SearchBar onSubmit={handlerSubmit} />
+      {error && <Error>Error! Try reloading the page...</Error>}
+      {isEmpty && (
+        <Info>Your search did not match anything. Please try again.</Info>
+      )}
+      {galleryItems.length > 0 && <ImageGallery galleryItems={galleryItems} />}
+      {(loading && <Loader />) ||
+        (showLoadMode && <Button onLoadMore={handlerLoadMore} />)}
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#363636',
+            color: '#fff',
+          },
+        }}
+      />
+    </Layout>
+  );
+};

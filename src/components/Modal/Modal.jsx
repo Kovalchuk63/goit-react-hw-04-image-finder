@@ -1,4 +1,3 @@
-import './Modal.css';
 import Modal from 'react-modal';
 
 const customStyles = {
@@ -8,26 +7,26 @@ const customStyles = {
     right: 'auto',
     bottom: 'auto',
     marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
+    transform: 'translate(-50%, -46%)',
   },
 };
 
 Modal.setAppElement('#root');
 
-export const ModalWindow = ({
+export const ModalContainer = ({
   isModalOpen,
-  closeModal,
+  onCloseModal,
   largeImageURL,
   tags,
 }) => {
   return (
     <Modal
       isOpen={isModalOpen}
-      onRequestClose={closeModal}
+      onRequestClose={onCloseModal}
       style={customStyles}
       contentLabel="Example Modal"
     >
-      <img src={largeImageURL} alt={tags} width="840px" height="700px" />
+      <img src={largeImageURL} alt={tags} width="860" height="560"></img>
     </Modal>
   );
 };
