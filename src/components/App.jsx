@@ -22,6 +22,8 @@ export const App = () => {
     setPage(1);
     setGalleryItems([]);
     setShowLoadMode(false);
+    setError(false);
+    setIsEmpty(false);
   };
 
   const handlerLoadMore = () => {
@@ -35,10 +37,10 @@ export const App = () => {
     async function search() {
       try {
         setLoading(true);
-        setError(false);
-        setIsEmpty(false);
 
         const data = await serviceSearch(page, query);
+
+        setIsEmpty(data.hits.length === 0);
 
         if (page === 1 && data.totalHits > 1) {
           toast.success(`Hooray! We found ${data.totalHits} images!`);
@@ -47,12 +49,6 @@ export const App = () => {
         if (page >= Math.ceil(data.totalHits / 12) && data.totalHits !== 0) {
           toast("We're sorry, but you've reached the end of search results.");
         }
-
-        setIsEmpty(() => {
-          if (data.hits.length === 0) {
-            return true;
-          }
-        });
 
         setGalleryItems(prevState => [...prevState, ...data.hits]);
         setShowLoadMode(page < Math.ceil(data.totalHits / 12));
